@@ -4,6 +4,11 @@
     "guildId": "",
     "serverIp": "play.artemissmp.fun",
     "managementIp": "yourserver.ip.changeme",
+    "gemini": {
+        "channel_id": "1460610215560089601",
+        "model": "gemini-2.5-flash",
+        "memory_limit": 10
+    },
     "colors": {
         "primary": "#0099ff",
         "success": "#00ff00",

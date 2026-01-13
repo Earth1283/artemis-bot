@@ -5,7 +5,7 @@ welcome:
   enabled: false
   message: |
     Welcome to Artemis SMP, <@{user}>!
-    Please read the rules in <#RULES_CHANNEL_ID> and have fun!
+    Please read the rules in https://discord.com/channels/1396081072063647874/1396082170417909760 and have fun!
 
 ip_response:
   randomly_select: false
@@ -17,7 +17,15 @@ faq:
     answer: "You can join by adding `{serverIp}` to your server list!"
   - question: "version"
     answer: "We are currently on Minecraft version 1.21.8, though you may join with any version from 1.13 through 1.21.11"
+  - question: "rules"
+    answer: "Please check the https://discord.com/channels/1396081072063647874/1396082170417909760 channel to read our server rules."
+  - question: "store"
+    answer: "Support the server by visiting our store at https://will.add.later"
+  - question: "discord"
+    answer: "You are already here! But feel free to invite your friends using this link: https://discord.gg/artemissmp"
+  - question: "report"
+    answer: "To report a player, please open a ticket in the #support channel."
 
 errors:
   no_permission: "You do not have permission to use this command."
-  generic: "An error occurred while executing this command."
+  generic: "An error occurred while executing this command.\nIf this issue presists, please contact my developer, `Earth1283`"

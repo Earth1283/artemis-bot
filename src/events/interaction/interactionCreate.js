@@ -52,6 +52,18 @@ module.exports = {
             return;
         }
 
+        if (interaction.isAutocomplete()) {
+            const command = client.commands.get(interaction.commandName);
+            if (!command) return;
+
+            try {
+                await command.autocomplete(interaction, client);
+            } catch (error) {
+                console.error(error);
+            }
+            return;
+        }
+
         if (!interaction.isChatInputCommand()) return;
 
         const command = client.commands.get(interaction.commandName);
