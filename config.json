@@ -3,7 +3,7 @@
     "clientId": "",
     "guildId": "",
     "serverIp": "play.artemissmp.fun",
-    "managementIp": "127.0.0.1",
+    "managementIp": "yourserver.ip.changeme",
     "colors": {
         "primary": "#0099ff",
         "success": "#00ff00",
