@@ -1,0 +1,23 @@
+# Messages Configuration
+# You can use placeholders like {user}, {serverIp}, {reason}, etc.
+
+welcome:
+  enabled: false
+  message: |
+    Welcome to Artemis SMP, <@{user}>!
+    Please read the rules in <#RULES_CHANNEL_ID> and have fun!
+
+ip_response:
+  randomly_select: false
+  options:
+    - "The server IP is `{serverIp}`. Join us!"
+
+faq:
+  - question: "how to join"
+    answer: "You can join by adding `{serverIp}` to your server list!"
+  - question: "version"
+    answer: "We are currently on Minecraft version 1.21.8, though you may join with any version from 1.13 through 1.21.11"
+
+errors:
+  no_permission: "You do not have permission to use this command."
+  generic: "An error occurred while executing this command."

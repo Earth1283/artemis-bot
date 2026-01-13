@@ -1,0 +1,19 @@
+{
+    "prefix": "!",
+    "clientId": "",
+    "guildId": "",
+    "serverIp": "play.artemissmp.fun",
+    "managementIp": "127.0.0.1",
+    "colors": {
+        "primary": "#0099ff",
+        "success": "#00ff00",
+        "error": "#ff0000"
+    },
+    "roles": {
+        "moderator": "MODERATOR_ROLE_ID"
+    },
+    "channels": {
+        "welcome": "WELCOME_CHANNEL_ID",
+        "logs": "LOGS_CHANNEL_ID"
+    }
+}
