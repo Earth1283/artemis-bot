@@ -21,10 +21,16 @@ passport.deserializeUser((id, done) => {
 });
 
 if (process.env.CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) {
+    const port = process.env.MANAGEMENT_API_PORT || 3000;
+    const callbackURL = process.env.DISCORD_CALLBACK_URL || `http://localhost:${port}/auth/discord/callback`;
+
+    console.log(`[Dashboard] OAuth Callback URL set to: ${callbackURL}`);
+    console.log('[Dashboard] Ensure this exact URL is added to your Discord Developer Portal -> OAuth2 -> Redirects');
+
     passport.use(new Strategy({
         clientID: process.env.CLIENT_ID,
         clientSecret: process.env.DISCORD_CLIENT_SECRET,
-        callbackURL: process.env.DISCORD_CALLBACK_URL || 'http://localhost:3000/auth/discord/callback',
+        callbackURL: callbackURL,
         scope: ['identify']
     }, (accessToken, refreshToken, profile, done) => {
         // Save/Update user in DB
