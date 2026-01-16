@@ -1,9 +1,10 @@
-<%- include('layout', { body: ` <div
-    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-    <div>
-        <h1>Configuration</h1>
-        <p style="color: var(--text-secondary); margin: 0;">Edit your bot's messages and settings.</p>
-    </div>
+<%- include('header') %>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1>Configuration</h1>
+            <p style="color: var(--text-secondary); margin: 0;">Edit your bot's messages and settings.</p>
+        </div>
     </div>
 
     <% if (success) { %>
@@ -22,4 +23,5 @@
                     </div>
                 </form>
             </div>
-            ` }) %>
+
+            <%- include('footer') %>
