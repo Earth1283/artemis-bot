@@ -19,4 +19,12 @@ client.messages = loadMessages();
 // Load Handlers
 loadHandlers(client);
 
+// Start Dashboard
+const dashboard = require('./dashboard/app');
+const port = process.env.MANAGEMENT_API_PORT || 3000;
+
+dashboard.listen(port, () => {
+  console.log(`Dashboard running on http://localhost:${port}`);
+});
+
 client.login(process.env.DISCORD_TOKEN);

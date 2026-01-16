@@ -2,10 +2,23 @@ const { Events, ChannelType } = require('discord.js');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
+const db = require('../../database/db');
+const { tools, toolDefinitions } = require('../../utils/aiTools');
 
 // Store the genAI instance
 let genAI;
 let model;
+
+async function downloadImage(url) {
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    return {
+        inlineData: {
+            data: Buffer.from(response.data).toString('base64'),
+            mimeType: response.headers['content-type']
+        }
+    };
+}
 
 module.exports = {
     name: Events.MessageCreate,
@@ -47,7 +60,7 @@ module.exports = {
 
         // Check if configured and correct channel
         if (geminiConfig && geminiConfig.channel_id === message.channel.id) {
-            
+
             if (!process.env.GEMINI_API_KEY) {
                 console.warn('Gemini is enabled but GEMINI_API_KEY is missing in .env');
                 return;
@@ -55,7 +68,7 @@ module.exports = {
 
             try {
                 await message.channel.sendTyping();
-                
+
                 // Read system message
                 let systemInstruction = "";
                 try {
@@ -67,60 +80,77 @@ module.exports = {
                     console.error("Failed to read system-msg.txt", err);
                 }
 
-                // Initialize or Re-initialize if system prompt needs to be fresh or just to be safe with config
-                // Ideally we check if model params changed, but for now we can just get the model.
-                // The SDK is lightweight for this.
                 if (!genAI) {
                     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 }
-                
-                model = genAI.getGenerativeModel({ 
-                    model: geminiConfig.model || "gemini-pro",
-                    systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
+
+                // --- Quota Check for Images ---
+                const hasImages = message.attachments.size > 0;
+                let imageParts = [];
+
+                if (hasImages) {
+                    const userId = message.author.id;
+                    const specialUser = "862583929320112130";
+
+                    if (userId !== specialUser) {
+                        const today = new Date().setHours(0, 0, 0, 0);
+
+                        // Get current quota
+                        const quota = db.prepare('SELECT * FROM ai_quotas WHERE user_id = ?').get(userId);
+
+                        if (quota) {
+                            if (quota.last_reset < today) {
+                                // Reset quota for new day
+                                db.prepare('UPDATE ai_quotas SET usage_count = 0, last_reset = ? WHERE user_id = ?').run(today, userId);
+                            } else if (quota.usage_count >= 2) {
+                                await message.reply("You have reached your daily limit of 2 images. Please try again tomorrow.");
+                                return;
+                            }
+                        } else {
+                            db.prepare('INSERT INTO ai_quotas (user_id, usage_count, last_reset) VALUES (?, 0, ?)').run(userId, today);
+                        }
+                    }
+
+                    // Process images
+                    for (const [key, attachment] of message.attachments) {
+                        if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+                            const imagePart = await downloadImage(attachment.url);
+                            imageParts.push(imagePart);
+                        }
+                    }
+
+                    // Increment usage
+                    if (userId !== specialUser && imageParts.length > 0) {
+                        db.prepare('UPDATE ai_quotas SET usage_count = usage_count + 1 WHERE user_id = ?').run(userId);
+                    }
+                }
+
+                // Initialize Model with Tools
+                // Note: gemini-pro-vision (if used previously) doesn't support tools, but gemini-1.5-flash/pro does.
+                // Assuming newer models are used or we fallback.
+                model = genAI.getGenerativeModel({
+                    model: geminiConfig.model || "gemini-1.5-flash",
+                    systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+                    tools: [{ functionDeclarations: toolDefinitions }]
                 });
 
                 // Fetch history
                 const limit = geminiConfig.memory_limit || 10;
-                // Fetch more than limit to filter out bots/system messages if needed, 
-                // but for now strict limit is fine.
                 const messages = await message.channel.messages.fetch({ limit: limit });
 
-                // Format history for Gemini
-                // Discord messages are newest first, Gemini expects oldest first
                 const history = [];
                 const sortedMessages = Array.from(messages.values()).sort((a, b) => a.createdTimestamp - b.createdTimestamp);
 
                 for (const msg of sortedMessages) {
-                    // Skip empty messages (e.g. attachments only) if needed, 
-                    // though Gemini can handle empty text if we are careful.
-                    if (!msg.content) continue;
+                    if (!msg.content && msg.attachments.size === 0) continue;
+                    // Skip current message to add it separately with images
+                    if (msg.id === message.id) continue;
 
                     const role = msg.author.id === client.user.id ? "model" : "user";
-                    
-                    // Basic cleanup, maybe remove bot mentions? 
-                    // For DM it's cleaner, mostly 1 on 1.
                     history.push({
                         role: role,
-                        parts: [{ text: msg.content }],
+                        parts: [{ text: msg.content || "analyzing image..." }], // Placeholder for old images in history if needed, or we just ignore them for now
                     });
-                }
-                
-                // The last message in 'history' is the current message we are replying to.
-                // Gemini's chat.sendMessage logic works by providing history *before* the new message, 
-                // OR we can just use generateContent with the whole transcript. 
-                // startChat is better for maintaining context logic if we were keeping the object alive,
-                // but since this is stateless per request, startChat with history is good.
-                
-                // However, the current message is already in 'history' because we fetched it.
-                // We should remove the last user message from history and send it as the prompt
-                // to match startChat semantics which expects history to be *past* turns.
-                
-                let lastUserMessage = "";
-                if (history.length > 0 && history[history.length - 1].role === "user") {
-                    lastUserMessage = history.pop().parts[0].text;
-                } else {
-                    // This shouldn't happen in a DM triggered by a user message
-                    lastUserMessage = message.content; 
                 }
 
                 // Ensure history starts with user
@@ -132,8 +162,34 @@ module.exports = {
                     history: history,
                 });
 
-                const result = await chat.sendMessage(lastUserMessage);
-                const responseText = result.response.text();
+                // Construct prompt with text and images
+                const prompt = [message.content, ...imageParts];
+
+                const result = await chat.sendMessage(prompt);
+                const response = result.response;
+                let responseText = response.text();
+
+                // Check for function calls
+                const functionCalls = response.functionCalls();
+                if (functionCalls && functionCalls.length > 0) {
+                    for (const call of functionCalls) {
+                        const functionName = call.name;
+                        if (tools[functionName]) {
+                            const apiResponse = await tools[functionName](call.args);
+
+                            // Send the function result back to the model
+                            const result2 = await chat.sendMessage([
+                                {
+                                    functionResponse: {
+                                        name: functionName,
+                                        response: apiResponse
+                                    }
+                                }
+                            ]);
+                            responseText = result2.response.text();
+                        }
+                    }
+                }
 
                 if (!responseText) return;
 
@@ -149,15 +205,10 @@ module.exports = {
 
             } catch (error) {
                 if (error.status === 429) {
-                    let waitTime = "a few";
-                    const match = error.message.match(/Please retry in ([0-9.]+)s/);
-                    if (match && match[1]) {
-                        waitTime = Math.ceil(parseFloat(match[1]));
-                    }
-                    await message.channel.send(`Please slow down! I'm on cooldown. Try again in ${waitTime} seconds. Do **NOT** send a new message in ${waitTime} seconds.`);
+                    await message.channel.send("I'm overloaded right now (429). Please try again later.");
                 } else {
                     console.error('Error handling Gemini request:', error);
-                    await message.channel.send("I'm having trouble thinking right now. If this issue presists, contact Earth1283");
+                    await message.channel.send("I'm having trouble thinking right now.");
                 }
             }
         }
