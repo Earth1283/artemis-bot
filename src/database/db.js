@@ -26,6 +26,16 @@ db.exec(`
         usage_count INTEGER DEFAULT 0,
         last_reset INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS infractions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        guild_id TEXT,
+        type TEXT,
+        reason TEXT,
+        moderator_id TEXT,
+        timestamp INTEGER
+    );
 `);
 
 module.exports = db;

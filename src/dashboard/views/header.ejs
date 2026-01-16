@@ -153,7 +153,10 @@
         </a>
         <% if (typeof user !=='undefined' && user) { %>
             <div class="navbar-user">
-                <span>Welcome, <%= user.username %></span>
+                <a href="/dashboard" class="btn btn-outline" style="border: none;">Configuration</a>
+                <a href="/moderation" class="btn btn-outline" style="border: none;">Moderation</a>
+                <span style="margin-left: 1rem; border-left: 1px solid var(--border); padding-left: 1rem;">Welcome, <%=
+                        user.username %></span>
                 <a href="/logout" class="btn btn-outline">Logout</a>
             </div>
             <% } %>

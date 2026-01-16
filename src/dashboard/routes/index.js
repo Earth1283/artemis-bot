@@ -4,6 +4,7 @@ const passport = require('passport');
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const db = require('../../database/db');
 
 // Middleware to check authentication
 function ensureAuthenticated(req, res, next) {
@@ -59,6 +60,24 @@ router.get('/dashboard', ensureAuthenticated, (req, res) => {
         messagesContent: messagesContent,
         success: req.query.success
     });
+});
+
+router.get('/moderation', ensureAuthenticated, (req, res) => {
+    const infractions = db.prepare('SELECT * FROM infractions ORDER BY timestamp DESC').all();
+    res.render('moderation', {
+        user: req.user,
+        infractions: infractions
+    });
+});
+
+router.post('/api/infractions/delete/:id', ensureAuthenticated, (req, res) => {
+    const { id } = req.params;
+    try {
+        db.prepare('DELETE FROM infractions WHERE id = ?').run(id);
+        res.redirect('/moderation');
+    } catch (e) {
+        res.status(500).send('Error deleting infraction: ' + e.message);
+    }
 });
 
 router.post('/api/save', ensureAuthenticated, (req, res) => {
