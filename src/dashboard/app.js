@@ -1,7 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const { Strategy } = require('passport-discord');
-const session = require('cookie-session');
+const session = require('express-session');
 const path = require('path');
 const db = require('../database/db');
 const { loadConfig } = require('../config');
@@ -65,7 +65,9 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'super_secret_key',
     resave: false,
     saveUninitialized: false,
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
+    cookie: {
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
+    }
 }));
 
 app.use(passport.initialize());
